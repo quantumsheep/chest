@@ -24,12 +24,13 @@ def appdir(path: str = '') -> pathlib.Path:
     return dirpath
 
 
-def appfile(filename: str, path: str = '') -> pathlib.Path:
+def appfile(filename: str, path: str = '', create=True) -> pathlib.Path:
     if filename.startswith('/'):
         filename = filename[1::]
 
     filepath = appdir(path) / filename
 
-    filepath.touch(exist_ok=True)
+    if create:
+        filepath.touch(exist_ok=True)
 
     return filepath
