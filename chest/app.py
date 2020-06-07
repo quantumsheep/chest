@@ -3,6 +3,8 @@ import sys
 
 from getpass import getpass
 
+import chest.local_data as local_data
+
 
 class Chest:
     @staticmethod
@@ -38,3 +40,8 @@ Available commands are:
 
         master = getpass('Enter master password: ')
         print(master)
+
+        values_path = local_data.appfile('/values.dat')
+
+        content = values_path.read_text()
+        print(content)
