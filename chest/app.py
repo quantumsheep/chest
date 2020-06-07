@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+from getpass import getpass
+
 
 class Chest:
     @staticmethod
@@ -33,3 +35,6 @@ Available commands are:
         parser.add_argument('-f', '--file', help='File data', type=str)
 
         args = parser.parse_args(sys.argv[2:])
+
+        master = getpass('Enter master password: ')
+        print(master)
