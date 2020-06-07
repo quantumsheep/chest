@@ -1,9 +1,12 @@
 import argparse
 import sys
 
+import pickle
+
 from getpass import getpass
 
 import chest.local_data as local_data
+import chest.security as security
 
 
 class Chest:
@@ -38,10 +41,17 @@ Available commands are:
 
         args = parser.parse_args(sys.argv[2:])
 
+        name = input("Enter value's name: ")
+        value = input("Enter value: ")
         master = getpass('Enter master password: ')
-        print(master)
 
-        values_path = local_data.appfile('/values.dat')
+        filename = security.hash_str(name).hex()
+        values_path = local_data.appfile(filename)
 
-        content = values_path.read_text()
-        print(content)
+        content = values_path.read_bytes()
+
+        data = pickle.dumps(value)
+        data = security.encrypt(data, master)
+
+        f = open(values_path, 'wb')
+        f.write(data)
