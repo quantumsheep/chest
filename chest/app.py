@@ -18,7 +18,7 @@ class Chest:
         parser = argparse.ArgumentParser(
             description='Securely store data by encrypting it.',
             usage='''chest <command> [<args>]
-            
+
 Available commands are:
   store  Encrypt and store data
   get    Fetch a previously stored data
@@ -46,12 +46,33 @@ Available commands are:
         master = getpass('Enter master password: ')
 
         filename = security.hash_str(name).hex()
-        values_path = local_data.appfile(filename)
-
-        content = values_path.read_bytes()
+        filepath = local_data.appfile(filename)
 
         data = pickle.dumps(value)
         data = security.encrypt(data, master)
 
-        f = open(values_path, 'wb')
+        f = open(filepath, 'wb')
         f.write(data)
+
+    def get(self):
+        parser = argparse.ArgumentParser(
+            description='Get a stored value')
+
+        parser.add_argument('name', help="Value's name", type=str)
+
+        args = parser.parse_args(sys.argv[2:])
+
+        filename = security.hash_str(args.name).hex()
+        filepath = local_data.appfile(filename, create=False)
+
+        if filepath.exists():
+            master = getpass('Enter master password: ')
+
+            data = filepath.read_bytes()
+            data = security.decrypt(data, master)
+            data = pickle.loads(data)
+
+            print(data)
+        else:
+            print(
+                f"No value named '{args.name}' is currently stored.", file=sys.stderr)
