@@ -20,7 +20,7 @@ def encrypt(data: bytes, password: str) -> bytes:
     aesgcm = AESGCM(hash_str(password))
     nonce = os.urandom(12)
 
-    ct = aesgcm.encrypt(nonce,  data, None)
+    ct = aesgcm.encrypt(nonce, data, None)
 
     return nonce + ct
 
