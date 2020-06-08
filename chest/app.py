@@ -10,6 +10,7 @@ import chest.security as security
 from chest.colored import Style, colored
 
 from .exceptions.InvalidMasterPassword import InvalidMasterPassword
+from .exceptions.InitializationNeeded import InitializationNeeded
 
 from cryptography.exceptions import InvalidTag
 
@@ -42,24 +43,47 @@ Available commands are:
             parser.print_help()
 
     def __get_masterpwd_hash(self) -> bytes:
-        filepath = local_data.appfile('.m')
+        filepath = local_data.appfile('.m', create=False)
 
-        f = open(filepath, 'rb')
-        h = f.read()
-        f.close()
+        if filepath.exists():
+            f = open(filepath, 'rb')
+            h = f.read()
+            f.close()
 
-        return h
+            return h
+
+        raise InitializationNeeded()
 
     def ask_masterpwd(self) -> bytes:
-        master = getpass('Enter master password: ')
-
         h = self.__get_masterpwd_hash()
+
+        master = getpass('Enter master password: ')
         master_h = security.hash_str(master)
 
         if master_h != h:
             raise InvalidMasterPassword()
 
         return master_h
+
+    def init(self):
+        masterpath = local_data.appfile('.m', create=False)
+
+        if masterpath.exists():
+            print(colored("Initialization has already been done.",
+                          Style.FAIL), file=sys.stderr)
+        else:
+            master = getpass('Enter master password: ')
+            master_check = getpass('Re-enter master password: ')
+
+            if master != master_check:
+                print(colored("Passwords doesn't match.",
+                              Style.FAIL), file=sys.stderr)
+
+                return 1
+            else:
+                master_h = security.hash_str(master)
+
+                masterpath.write_bytes(master_h)
 
     def store(self):
         parser = argparse.ArgumentParser(
@@ -83,7 +107,7 @@ Available commands are:
 
         try:
             master = self.ask_masterpwd()
-        except InvalidMasterPassword as e:
+        except (InvalidMasterPassword, InitializationNeeded) as e:
             print(e.message, file=sys.stderr)
             return 1
 
@@ -111,7 +135,7 @@ Available commands are:
         if filepath.exists():
             try:
                 master = self.ask_masterpwd()
-            except InvalidMasterPassword as e:
+            except (InvalidMasterPassword, InitializationNeeded) as e:
                 print(colored(e.message, Style.FAIL), file=sys.stderr)
                 return 1
 
