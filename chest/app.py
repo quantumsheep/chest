@@ -49,7 +49,7 @@ Available commands are:
 
         if args.file is not None:
             f = open(args.file, 'rb')
-            value = f.read()
+            value = str(f.read(), 'unicode_escape')
 
             f.close()
         else:
