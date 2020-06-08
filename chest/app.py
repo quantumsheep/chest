@@ -7,6 +7,7 @@ from getpass import getpass
 
 import chest.local_data as local_data
 import chest.security as security
+from chest.colored import Style, colored
 
 from .exceptions.InvalidMasterPassword import InvalidMasterPassword
 
@@ -33,7 +34,10 @@ Available commands are:
         args = parser.parse_args(sys.argv[1:2])
 
         if hasattr(self, args.subcommand):
-            getattr(self, args.subcommand)()
+            code = getattr(self, args.subcommand)()
+
+            if code is not None and type(code) is int and code > 0:
+                exit(code)
         else:
             parser.print_help()
 
@@ -108,7 +112,7 @@ Available commands are:
             try:
                 master = self.ask_masterpwd()
             except InvalidMasterPassword as e:
-                print(e.message, file=sys.stderr)
+                print(colored(e.message, Style.FAIL), file=sys.stderr)
                 return 1
 
             data = filepath.read_bytes()
@@ -116,12 +120,13 @@ Available commands are:
             try:
                 data = security.decrypt(data, master)
             except InvalidTag:
-                print("Given password does not match the value's password.")
+                print(colored(
+                    "Given password does not match the value's password.", Style.FAIL), file=sys.stderr)
                 return 1
 
             data = pickle.loads(data)
 
             print(data)
         else:
-            print(
-                f"No value named '{args.name}' is currently stored.", file=sys.stderr)
+            print(colored(
+                f"No value named '{args.name}' is currently stored.", Style.FAIL), file=sys.stderr)
