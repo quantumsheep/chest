@@ -132,7 +132,7 @@ Available commands are:
 
     def get(self):
         parser = argparse.ArgumentParser(
-            description='Get a stored value')
+            description='Fetch a previously stored data')
 
         parser.add_argument('name', help="Value's name", type=str)
 
@@ -170,7 +170,29 @@ Available commands are:
                 f"No value named '{args.name}' is currently stored.", Style.FAIL), file=sys.stderr)
 
     def delete(self):
+        parser = argparse.ArgumentParser(
+            description='Delete a stored value')
+
+        parser.add_argument('name', help="Value's name", type=str)
+
+        args = parser.parse_args(sys.argv[2:])
+
         if not self.is_initialized():
             print(colored("An initialization is needed.",
                           Style.FAIL), file=sys.stderr)
             return 1
+
+        try:
+            master = self.ask_masterpwd()
+        except InvalidMasterPassword as e:
+            print(colored(e.message, Style.FAIL), file=sys.stderr)
+            return 1
+
+        filename = security.hash_str(args.name).hex()
+        filepath = local_data.appfile(filename, create=False)
+
+        if filepath.exists():
+            filepath.unlink()
+        else:
+            print(colored(
+                f"No value named '{args.name}' is currently stored.", Style.FAIL), file=sys.stderr)
