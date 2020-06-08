@@ -10,7 +10,6 @@ import chest.security as security
 from chest.colored import Style, colored
 
 from .exceptions.InvalidMasterPassword import InvalidMasterPassword
-from .exceptions.InitializationNeeded import InitializationNeeded
 
 from cryptography.exceptions import InvalidTag
 
@@ -26,16 +25,17 @@ class Chest:
             usage='''chest <command> [<args>]
 
 Available commands are:
-  init   Initialize your personnal chest
-  store  Encrypt and store data
-  get    Fetch a previously stored data
+  init    Initialize your personnal chest
+  store   Encrypt and store data
+  get     Fetch a previously stored data
+  delete  Delete a stored value
 ''')
 
         parser.add_argument('subcommand', help='Subcommand to execute')
 
         args = parser.parse_args(sys.argv[1:2])
 
-        autorized_subcommands = ('init', 'store', 'get')
+        autorized_subcommands = ('init', 'store', 'get', 'delete')
 
         if args.subcommand in autorized_subcommands:
             code = getattr(self, args.subcommand)()
@@ -45,20 +45,21 @@ Available commands are:
         else:
             parser.print_help()
 
-    def __get_masterpwd_hash(self) -> bytes:
+    def is_initialized(self) -> bool:
+        filepath = local_data.appfile('.m', create=False)
+        return filepath.exists()
+
+    def get_masterpwd_hash(self) -> bytes:
         filepath = local_data.appfile('.m', create=False)
 
-        if filepath.exists():
-            f = open(filepath, 'rb')
-            h = f.read()
-            f.close()
+        f = open(filepath, 'rb')
+        h = f.read()
+        f.close()
 
-            return h
-
-        raise InitializationNeeded()
+        return h
 
     def ask_masterpwd(self) -> bytes:
-        h = self.__get_masterpwd_hash()
+        h = self.get_masterpwd_hash()
 
         master = getpass('Enter master password: ')
         master_h = security.hash_str(master)
@@ -89,6 +90,11 @@ Available commands are:
                 masterpath.write_bytes(master_h)
 
     def store(self):
+        if not self.is_initialized():
+            print(colored("An initialization is needed.",
+                          Style.FAIL), file=sys.stderr)
+            return 1
+
         parser = argparse.ArgumentParser(
             description='Encrypt and store data')
 
@@ -110,8 +116,8 @@ Available commands are:
 
         try:
             master = self.ask_masterpwd()
-        except (InvalidMasterPassword, InitializationNeeded) as e:
-            print(e.message, file=sys.stderr)
+        except InvalidMasterPassword as e:
+            print(colored(e.message, Style.FAIL), file=sys.stderr)
             return 1
 
         filename = security.hash_str(name).hex()
@@ -125,6 +131,11 @@ Available commands are:
         f.close()
 
     def get(self):
+        if not self.is_initialized():
+            print(colored("An initialization is needed.",
+                          Style.FAIL), file=sys.stderr)
+            return 1
+
         parser = argparse.ArgumentParser(
             description='Get a stored value')
 
@@ -138,7 +149,7 @@ Available commands are:
         if filepath.exists():
             try:
                 master = self.ask_masterpwd()
-            except (InvalidMasterPassword, InitializationNeeded) as e:
+            except InvalidMasterPassword as e:
                 print(colored(e.message, Style.FAIL), file=sys.stderr)
                 return 1
 
@@ -157,3 +168,9 @@ Available commands are:
         else:
             print(colored(
                 f"No value named '{args.name}' is currently stored.", Style.FAIL), file=sys.stderr)
+
+    def delete(self):
+        if not self.is_initialized():
+            print(colored("An initialization is needed.",
+                          Style.FAIL), file=sys.stderr)
+            return 1
