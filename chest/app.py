@@ -8,6 +8,8 @@ from getpass import getpass
 import chest.local_data as local_data
 import chest.security as security
 
+from .exceptions.InvalidMasterPassword import InvalidMasterPassword
+
 from cryptography.exceptions import InvalidTag
 
 
@@ -35,6 +37,26 @@ Available commands are:
         else:
             parser.print_help()
 
+    def __get_masterpwd_hash(self) -> bytes:
+        filepath = local_data.appfile('.m')
+
+        f = open(filepath, 'rb')
+        h = f.read()
+        f.close()
+
+        return h
+
+    def ask_masterpwd(self) -> bytes:
+        master = getpass('Enter master password: ')
+
+        h = self.__get_masterpwd_hash()
+        master_h = security.hash_str(master)
+
+        if master_h != h:
+            raise InvalidMasterPassword()
+
+        return master_h
+
     def store(self):
         parser = argparse.ArgumentParser(
             description='Encrypt and store data')
@@ -55,7 +77,11 @@ Available commands are:
         else:
             value = input("Enter value: ")
 
-        master = getpass('Enter master password: ')
+        try:
+            master = self.ask_masterpwd()
+        except InvalidMasterPassword as e:
+            print(e.message, file=sys.stderr)
+            return 1
 
         filename = security.hash_str(name).hex()
         filepath = local_data.appfile(filename)
@@ -79,7 +105,11 @@ Available commands are:
         filepath = local_data.appfile(filename, create=False)
 
         if filepath.exists():
-            master = getpass('Enter master password: ')
+            try:
+                master = self.ask_masterpwd()
+            except InvalidMasterPassword as e:
+                print(e.message, file=sys.stderr)
+                return 1
 
             data = filepath.read_bytes()
 
