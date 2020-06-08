@@ -8,6 +8,8 @@ from getpass import getpass
 import chest.local_data as local_data
 import chest.security as security
 
+from cryptography.exceptions import InvalidTag
+
 
 class Chest:
     @staticmethod
@@ -80,7 +82,13 @@ Available commands are:
             master = getpass('Enter master password: ')
 
             data = filepath.read_bytes()
-            data = security.decrypt(data, master)
+
+            try:
+                data = security.decrypt(data, master)
+            except InvalidTag:
+                print("Given password does not match the value's password.")
+                return 1
+
             data = pickle.loads(data)
 
             print(data)
