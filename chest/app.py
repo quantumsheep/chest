@@ -42,7 +42,17 @@ Available commands are:
         args = parser.parse_args(sys.argv[2:])
 
         name = input("Enter value's name: ")
-        value = input("Enter value: ")
+
+        value: str = None
+
+        if args.file is not None:
+            f = open(args.file, 'rb')
+            value = f.read()
+
+            f.close()
+        else:
+            value = input("Enter value: ")
+
         master = getpass('Enter master password: ')
 
         filename = security.hash_str(name).hex()
@@ -53,6 +63,7 @@ Available commands are:
 
         f = open(filepath, 'wb')
         f.write(data)
+        f.close()
 
     def get(self):
         parser = argparse.ArgumentParser(
