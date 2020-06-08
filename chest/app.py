@@ -90,17 +90,17 @@ Available commands are:
                 masterpath.write_bytes(master_h)
 
     def store(self):
-        if not self.is_initialized():
-            print(colored("An initialization is needed.",
-                          Style.FAIL), file=sys.stderr)
-            return 1
-
         parser = argparse.ArgumentParser(
             description='Encrypt and store data')
 
         parser.add_argument('-f', '--file', help='File data', type=str)
 
         args = parser.parse_args(sys.argv[2:])
+
+        if not self.is_initialized():
+            print(colored("An initialization is needed.",
+                          Style.FAIL), file=sys.stderr)
+            return 1
 
         name = input("Enter value's name: ")
 
@@ -131,11 +131,6 @@ Available commands are:
         f.close()
 
     def get(self):
-        if not self.is_initialized():
-            print(colored("An initialization is needed.",
-                          Style.FAIL), file=sys.stderr)
-            return 1
-
         parser = argparse.ArgumentParser(
             description='Get a stored value')
 
@@ -143,16 +138,21 @@ Available commands are:
 
         args = parser.parse_args(sys.argv[2:])
 
+        if not self.is_initialized():
+            print(colored("An initialization is needed.",
+                          Style.FAIL), file=sys.stderr)
+            return 1
+
+        try:
+            master = self.ask_masterpwd()
+        except InvalidMasterPassword as e:
+            print(colored(e.message, Style.FAIL), file=sys.stderr)
+            return 1
+
         filename = security.hash_str(args.name).hex()
         filepath = local_data.appfile(filename, create=False)
 
         if filepath.exists():
-            try:
-                master = self.ask_masterpwd()
-            except InvalidMasterPassword as e:
-                print(colored(e.message, Style.FAIL), file=sys.stderr)
-                return 1
-
             data = filepath.read_bytes()
 
             try:
