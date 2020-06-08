@@ -26,6 +26,7 @@ class Chest:
             usage='''chest <command> [<args>]
 
 Available commands are:
+  init   Initialize your personnal chest
   store  Encrypt and store data
   get    Fetch a previously stored data
 ''')
@@ -34,7 +35,9 @@ Available commands are:
 
         args = parser.parse_args(sys.argv[1:2])
 
-        if hasattr(self, args.subcommand):
+        autorized_subcommands = ('init', 'store', 'get')
+
+        if args.subcommand in autorized_subcommands:
             code = getattr(self, args.subcommand)()
 
             if code is not None and type(code) is int and code > 0:
