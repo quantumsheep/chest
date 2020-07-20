@@ -26,13 +26,16 @@ class Chest:
     def __init__(self):
         parser = argparse.ArgumentParser(
             description='Securely store data by encrypting it.',
-            usage='''chest <command> [<args>]
+            usage='''chest <subcommand> [<args>]
 
-Available commands are:
+Available subcommands are:
   init    Initialize your personnal chest
   store   Encrypt and store data
   get     Fetch a previously stored data
   delete  Delete a stored value
+  list    List stored names
+  prune   Delete all stored values 
+  coffee  Brew some coffee
 ''')
 
         parser.add_argument('subcommand', help='Subcommand to execute')
