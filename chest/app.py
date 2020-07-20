@@ -1,15 +1,19 @@
 import argparse
 import sys
+import os
 
 import pickle
 
-from getpass import getpass
+from getpass import getpass, getuser
 
 import chest.local_data as local_data
 import chest.security as security
 from chest.colored import Style, colored
+import chest.filesystem as filesystem
 
+from .exceptions.ChestException import ChestException
 from .exceptions.InvalidMasterPassword import InvalidMasterPassword
+from .exceptions.ValueNotStored import ValueNotStored
 
 from cryptography.exceptions import InvalidTag
 
@@ -35,7 +39,8 @@ Available commands are:
 
         args = parser.parse_args(sys.argv[1:2])
 
-        autorized_subcommands = ('init', 'store', 'get', 'delete')
+        autorized_subcommands = (
+            'init', 'store', 'get', 'delete', 'list', 'prune', 'coffee')
 
         if args.subcommand in autorized_subcommands:
             code = getattr(self, args.subcommand)()
@@ -62,6 +67,8 @@ Available commands are:
         h = self.get_masterpwd_hash()
 
         master = getpass('Enter master password: ')
+        sys.stdout.write("\033[F\033[K\r")
+
         master_h = security.hash_str(master)
 
         if master_h != h:
@@ -116,19 +123,13 @@ Available commands are:
 
         try:
             master = self.ask_masterpwd()
-        except InvalidMasterPassword as e:
+
+            filesystem.store(name, value, master)
+            print(
+                colored(f"'{name}' has been successfully stored!", Style.OKGREEN))
+        except ChestException as e:
             print(colored(e.message, Style.FAIL), file=sys.stderr)
             return 1
-
-        filename = security.hash_str(name).hex()
-        filepath = local_data.appfile(filename)
-
-        data = pickle.dumps(value)
-        data = security.encrypt(data, master)
-
-        f = open(filepath, 'wb')
-        f.write(data)
-        f.close()
 
     def get(self):
         parser = argparse.ArgumentParser(
@@ -145,29 +146,35 @@ Available commands are:
 
         try:
             master = self.ask_masterpwd()
-        except InvalidMasterPassword as e:
+
+            value = filesystem.get(args.name, master)
+            print(value)
+        except ChestException as e:
             print(colored(e.message, Style.FAIL), file=sys.stderr)
             return 1
 
-        filename = security.hash_str(args.name).hex()
-        filepath = local_data.appfile(filename, create=False)
+    def list(self):
+        parser = argparse.ArgumentParser(
+            description='List stored names')
 
-        if filepath.exists():
-            data = filepath.read_bytes()
+        parser.add_argument(
+            '--hash', help="Display the hashes along with the elements", action="store_true", default=False)
 
-            try:
-                data = security.decrypt(data, master)
-            except InvalidTag:
-                print(colored(
-                    "Given password does not match the value's password.", Style.FAIL), file=sys.stderr)
-                return 1
+        args = parser.parse_args(sys.argv[2:])
 
-            data = pickle.loads(data)
+        if not self.is_initialized():
+            print(colored("An initialization is needed.",
+                          Style.FAIL), file=sys.stderr)
+            return 1
 
-            print(data)
-        else:
-            print(colored(
-                f"No value named '{args.name}' is currently stored.", Style.FAIL), file=sys.stderr)
+        try:
+            master = self.ask_masterpwd()
+
+            value = filesystem.get_list(master, args.hash)
+            print(value)
+        except ChestException as e:
+            print(colored(e.message, Style.FAIL), file=sys.stderr)
+            return 1
 
     def delete(self):
         parser = argparse.ArgumentParser(
@@ -184,15 +191,52 @@ Available commands are:
 
         try:
             master = self.ask_masterpwd()
-        except InvalidMasterPassword as e:
+
+            filesystem.delete(args.name, master)
+            print(
+                colored(f"'{args.name}' has been successfully deleted!", Style.OKGREEN))
+        except ChestException as e:
             print(colored(e.message, Style.FAIL), file=sys.stderr)
             return 1
 
-        filename = security.hash_str(args.name).hex()
-        filepath = local_data.appfile(filename, create=False)
+    def prune(self):
+        parser = argparse.ArgumentParser(
+            description='Delete all stored values')
 
-        if filepath.exists():
-            filepath.unlink()
-        else:
-            print(colored(
-                f"No value named '{args.name}' is currently stored.", Style.FAIL), file=sys.stderr)
+        if not self.is_initialized():
+            print(colored("An initialization is needed.",
+                          Style.FAIL), file=sys.stderr)
+            return 1
+
+        try:
+            master = self.ask_masterpwd()
+
+            res = input("Delete all your stored files ? [y/N]: ")
+
+            if res.lower() != "y":
+                print(colored("You decided to keep your files", Style.WARNING))
+                return 1
+
+            for file in os.listdir(local_data.appdir()):
+                if (file[0] != "."):
+                    local_data.appfile(file).unlink()
+
+            listFile = local_data.appfile(".list")
+            if listFile.exists():
+                with open(listFile, "w"):
+                    pass
+
+            print(colored("Your files are now deleted.", Style.OKGREEN))
+        except ChestException as e:
+            print(colored(e.message, Style.FAIL), file=sys.stderr)
+            return 1
+
+    def coffee(self):
+        print(f"""
+        Here is your coffee, {getuser()}
+    ( (
+    ) )
+  ........
+  |      |]
+  \      /
+   `----'""")

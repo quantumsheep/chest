@@ -1,3 +1,6 @@
-class InvalidMasterPassword(Exception):
+from chest.exceptions.ChestException import ChestException
+
+
+class InvalidMasterPassword(ChestException):
     def __init__(self):
-        self.message = "Given password doesn't match master password."
+        super().__init__("Given password doesn't match master password.")
